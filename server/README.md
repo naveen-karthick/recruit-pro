@@ -138,7 +138,11 @@ CORS on the API allows the UI origin via `CORS_ORIGIN`.
 
 ## API documentation
 
-See [docs/API.md](./docs/API.md) for the complete endpoint list.
+| Document | Audience |
+|----------|----------|
+| [docs/API_ENTITY_REFERENCE.md](./docs/API_ENTITY_REFERENCE.md) | **Simple entity-by-entity reference** (GET/POST + request/response) |
+| [docs/API.md](./docs/API.md) | Quick endpoint list |
+| [docs/SPRING_BOOT_API_BLUEPRINT.md](./docs/SPRING_BOOT_API_BLUEPRINT.md) | Full Spring Boot contract with implementation notes |
 
 ---
 
