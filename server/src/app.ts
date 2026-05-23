@@ -1,17 +1,12 @@
 import express from 'express'
 import cors from 'cors'
 import apiRoutes from './routes/index.js'
-
-function parseCorsOrigins(): string[] | true {
-  const raw = process.env.CORS_ORIGIN
-  if (!raw || raw === '*') return true
-  return raw.split(',').map((o) => o.trim()).filter(Boolean)
-}
+import { getCorsOptions } from './middleware/cors.js'
 
 export function createApp() {
   const app = express()
 
-  app.use(cors({ origin: parseCorsOrigins() }))
+  app.use(cors(getCorsOptions()))
   app.use(express.json())
 
   app.use('/api', apiRoutes)
