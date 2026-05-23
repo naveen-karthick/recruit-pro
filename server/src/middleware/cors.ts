@@ -1,56 +1,27 @@
 import type { CorsOptions } from 'cors'
 
-function cleanOrigin(value: string): string {
-  return value.trim().replace(/^["']|["']$/g, '')
-}
-
-function parseAllowedOrigins(): string[] {
-  const raw = process.env.CORS_ORIGIN
-  if (!raw) return ['http://localhost:5173']
-  return raw.split(',').map(cleanOrigin).filter(Boolean)
-}
-
-function isVercelAppOrigin(origin: string): boolean {
-  try {
-    const { hostname } = new URL(origin)
-    return hostname === 'vercel.app' || hostname.endsWith('.vercel.app')
-  } catch {
-    return false
-  }
+const SHARED: Pick<CorsOptions, 'methods' | 'allowedHeaders' | 'optionsSuccessStatus'> = {
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
 }
 
 export function getCorsOptions(): CorsOptions {
-  const allowed = parseAllowedOrigins()
-  const allowVercel = process.env.CORS_ALLOW_VERCEL === 'true' || process.env.CORS_ALLOW_VERCEL === '1'
+  const raw = process.env.CORS_ORIGIN?.trim().replace(/^["']|["']$/g, '')
+
+  // MVP: allow all origins when unset or explicitly *
+  if (!raw || raw === '*') {
+    return { origin: '*', ...SHARED }
+  }
+
+  const allowed = raw.split(',').map((o) => o.trim().replace(/^["']|["']$/g, '')).filter(Boolean)
 
   if (allowed.includes('*')) {
-    return { origin: true }
+    return { origin: '*', ...SHARED }
   }
 
   return {
-    origin(origin, callback) {
-      // Server-to-server or same-origin requests
-      if (!origin) {
-        callback(null, true)
-        return
-      }
-
-      const normalized = cleanOrigin(origin)
-
-      if (allowed.includes(normalized)) {
-        callback(null, true)
-        return
-      }
-
-      if (allowVercel && isVercelAppOrigin(normalized)) {
-        callback(null, true)
-        return
-      }
-
-      callback(null, false)
-    },
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    optionsSuccessStatus: 204,
+    origin: allowed,
+    ...SHARED,
   }
 }
