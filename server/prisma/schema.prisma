@@ -1,0 +1,462 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum JobCategory {
+  JOB
+  JOB_LEAD
+}
+
+enum JobType {
+  PERMANENT
+  INTERIM_PROJECT_CONSULTING
+  TEMPORARY
+  CONTRACT
+  TEMP_TO_PERM
+}
+
+enum PermanentSubType {
+  CONTINGENT
+  RETAINED
+  EXCLUSIVE
+}
+
+enum SalaryType {
+  MONTHLY
+  ANNUAL
+}
+
+enum ForecastBy {
+  MANUAL
+  HEADCOUNT
+  ACTIVE_APPLICATIONS_MANUAL
+  ACTIVE_APPLICATIONS_AUTO
+}
+
+model Industry {
+  id            String              @id @default(uuid()) @db.Uuid
+  name          String
+  subIndustries SubIndustry[]
+  companies     CompanyIndustry[]
+  contacts      ContactIndustry[]
+  candidates    CandidateIndustry[]
+
+  @@map("industries")
+}
+
+model SubIndustry {
+  id         String               @id @default(uuid()) @db.Uuid
+  name       String
+  industryId String               @db.Uuid
+  industry   Industry             @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  companies  CompanySubIndustry[]
+  contacts   ContactSubIndustry[]
+  candidates CandidateSubIndustry[]
+
+  @@index([industryId])
+  @@map("sub_industries")
+}
+
+model FunctionalExpertise {
+  id            String                         @id @default(uuid()) @db.Uuid
+  name          String
+  subItems      SubFunctionalExpertise[]
+  contacts      ContactFunctionalExpertise[]
+  jobs          JobFunctionalExpertise[]
+  candidates    CandidateFunctionalExpertise[]
+
+  @@map("functional_expertise")
+}
+
+model SubFunctionalExpertise {
+  id                    String                            @id @default(uuid()) @db.Uuid
+  name                  String
+  functionalExpertiseId String                            @db.Uuid
+  functionalExpertise   FunctionalExpertise               @relation(fields: [functionalExpertiseId], references: [id], onDelete: Cascade)
+  contacts              ContactSubFunctionalExpertise[]
+  jobs                  JobSubFunctionalExpertise[]
+  candidates            CandidateSubFunctionalExpertise[]
+
+  @@index([functionalExpertiseId])
+  @@map("sub_functional_expertise")
+}
+
+model Skill {
+  id         String           @id @default(uuid()) @db.Uuid
+  name       String
+  jobs       JobSkill[]
+  candidates CandidateSkill[]
+
+  @@map("skills")
+}
+
+model Keyword {
+  id         String             @id @default(uuid()) @db.Uuid
+  name       String
+  jobs       JobKeyword[]
+  candidates CandidateKeyword[]
+
+  @@map("keywords")
+}
+
+model Brand {
+  id        String         @id @default(uuid()) @db.Uuid
+  name      String
+  companies CompanyBrand[]
+
+  @@map("brands")
+}
+
+model CrmUser {
+  id               String         @id @default(uuid()) @db.Uuid
+  name             String
+  companyOwners    CompanyOwner[]
+  contactOwners    ContactOwner[]
+  jobOwners        JobOwner[]
+  ownedCandidates  Candidate[]    @relation("CandidateOwner")
+
+  @@map("crm_users")
+}
+
+model Address {
+  id           String    @id @default(uuid()) @db.Uuid
+  companyId    String    @db.Uuid
+  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  addressLine1 String
+  addressLine2 String?
+  city         String?
+  state        String?
+  country      String?
+  postalCode   String?
+  label        String?
+  workContacts Contact[] @relation("ContactWorkAddress")
+  jobs         Job[]     @relation("JobAddress")
+
+  @@index([companyId])
+  @@map("addresses")
+}
+
+model Company {
+  id              String               @id @default(uuid()) @db.Uuid
+  companyName     String
+  website         String?
+  linkedinUrl     String?
+  parentCompanyId String?              @db.Uuid
+  parentCompany   Company?             @relation("CompanyHierarchy", fields: [parentCompanyId], references: [id])
+  childCompanies  Company[]            @relation("CompanyHierarchy")
+  addresses       Address[]
+  industries      CompanyIndustry[]
+  subIndustries   CompanySubIndustry[]
+  brands          CompanyBrand[]
+  owners          CompanyOwner[]
+  contacts        Contact[]
+  jobs            Job[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([companyName])
+  @@index([parentCompanyId])
+  @@map("companies")
+}
+
+model CompanyIndustry {
+  companyId  String   @db.Uuid
+  industryId String   @db.Uuid
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  industry   Industry @relation(fields: [industryId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, industryId])
+  @@map("company_industries")
+}
+
+model CompanySubIndustry {
+  companyId     String      @db.Uuid
+  subIndustryId String      @db.Uuid
+  company       Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  subIndustry   SubIndustry @relation(fields: [subIndustryId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, subIndustryId])
+  @@map("company_sub_industries")
+}
+
+model CompanyBrand {
+  companyId String  @db.Uuid
+  brandId   String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  brand     Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, brandId])
+  @@map("company_brands")
+}
+
+model CompanyOwner {
+  companyId String  @db.Uuid
+  userId    String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      CrmUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, userId])
+  @@map("company_owners")
+}
+
+model Contact {
+  id                      String                          @id @default(uuid()) @db.Uuid
+  companyId               String                          @db.Uuid
+  company                 Company                         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  firstName               String
+  lastName                String
+  preferredName           String?
+  jobTitle                String?
+  primaryEmail            String?
+  primaryPhone            String?
+  linkedinProfile         String?
+  workAddressId           String?                         @db.Uuid
+  workAddress             Address?                        @relation("ContactWorkAddress", fields: [workAddressId], references: [id])
+  industries              ContactIndustry[]
+  subIndustries           ContactSubIndustry[]
+  functionalExpertise     ContactFunctionalExpertise[]
+  subFunctionalExpertise  ContactSubFunctionalExpertise[]
+  owners                  ContactOwner[]
+  jobs                    Job[]
+  createdAt               DateTime                        @default(now())
+  updatedAt               DateTime                        @updatedAt
+
+  @@index([companyId])
+  @@index([firstName, lastName])
+  @@map("contacts")
+}
+
+model ContactIndustry {
+  contactId  String   @db.Uuid
+  industryId String   @db.Uuid
+  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  industry   Industry @relation(fields: [industryId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, industryId])
+  @@map("contact_industries")
+}
+
+model ContactSubIndustry {
+  contactId     String      @db.Uuid
+  subIndustryId String      @db.Uuid
+  contact       Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  subIndustry   SubIndustry @relation(fields: [subIndustryId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, subIndustryId])
+  @@map("contact_sub_industries")
+}
+
+model ContactFunctionalExpertise {
+  contactId             String              @db.Uuid
+  functionalExpertiseId String              @db.Uuid
+  contact               Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  functionalExpertise   FunctionalExpertise @relation(fields: [functionalExpertiseId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, functionalExpertiseId])
+  @@map("contact_functional_expertise")
+}
+
+model ContactSubFunctionalExpertise {
+  contactId                String                 @db.Uuid
+  subFunctionalExpertiseId String                 @db.Uuid
+  contact                  Contact                @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  subFunctionalExpertise   SubFunctionalExpertise @relation(fields: [subFunctionalExpertiseId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, subFunctionalExpertiseId])
+  @@map("contact_sub_functional_expertise")
+}
+
+model ContactOwner {
+  contactId String  @db.Uuid
+  userId    String  @db.Uuid
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  user      CrmUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, userId])
+  @@map("contact_owners")
+}
+
+model Job {
+  id                     String                    @id @default(uuid()) @db.Uuid
+  jobTitle               String
+  jobCategory            JobCategory?
+  jobType                JobType?
+  permanentSubType       PermanentSubType?
+  headCount              Int?
+  companyId              String                    @db.Uuid
+  company                Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contactId              String?                   @db.Uuid
+  contact                Contact?                  @relation(fields: [contactId], references: [id])
+  country                String?
+  state                  String?
+  jobAddressId           String?                   @db.Uuid
+  jobAddress             Address?                  @relation("JobAddress", fields: [jobAddressId], references: [id])
+  salaryType             SalaryType?
+  monthsPerYear          Int?
+  annualSalary           Float?
+  salaryFrom             Float?
+  salaryTo               Float?
+  currency               String?
+  forecastBy             ForecastBy?
+  percentOfAnnualSalary  Float?
+  forecastFee            Float?
+  functionalExpertise    JobFunctionalExpertise[]
+  subFunctionalExpertise JobSubFunctionalExpertise[]
+  skills                 JobSkill[]
+  keywords               JobKeyword[]
+  owners                 JobOwner[]
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+
+  @@index([companyId])
+  @@index([jobTitle])
+  @@map("jobs")
+}
+
+model JobFunctionalExpertise {
+  jobId                 String              @db.Uuid
+  functionalExpertiseId String              @db.Uuid
+  job                   Job                 @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  functionalExpertise   FunctionalExpertise @relation(fields: [functionalExpertiseId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, functionalExpertiseId])
+  @@map("job_functional_expertise")
+}
+
+model JobSubFunctionalExpertise {
+  jobId                    String                 @db.Uuid
+  subFunctionalExpertiseId String                 @db.Uuid
+  job                      Job                    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  subFunctionalExpertise   SubFunctionalExpertise @relation(fields: [subFunctionalExpertiseId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, subFunctionalExpertiseId])
+  @@map("job_sub_functional_expertise")
+}
+
+model JobSkill {
+  jobId   String @db.Uuid
+  skillId String @db.Uuid
+  job     Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, skillId])
+  @@map("job_skills")
+}
+
+model JobKeyword {
+  jobId     String  @db.Uuid
+  keywordId String  @db.Uuid
+  job       Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  keyword   Keyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, keywordId])
+  @@map("job_keywords")
+}
+
+model JobOwner {
+  jobId  String  @db.Uuid
+  userId String  @db.Uuid
+  job    Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user   CrmUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, userId])
+  @@map("job_owners")
+}
+
+model Candidate {
+  id                     String                            @id @default(uuid()) @db.Uuid
+  firstName              String
+  lastName               String
+  gender                 String?
+  dateOfBirth            String?
+  primaryEmail           String?
+  primaryPhone           String?
+  linkedinProfile        String?
+  currentAddress         String?
+  nationality            String?
+  workSummary            String?
+  currentCompany         String?
+  currentJobTitle        String?
+  totalExperience        Float?
+  expectedSalary         Float?
+  availabilityDate       String?
+  ownerId                String?                           @db.Uuid
+  owner                  CrmUser?                          @relation("CandidateOwner", fields: [ownerId], references: [id])
+  skills                 CandidateSkill[]
+  functionalExpertise    CandidateFunctionalExpertise[]
+  subFunctionalExpertise CandidateSubFunctionalExpertise[]
+  keywords               CandidateKeyword[]
+  industries             CandidateIndustry[]
+  subIndustries          CandidateSubIndustry[]
+  createdAt              DateTime                          @default(now())
+  updatedAt              DateTime                          @updatedAt
+
+  @@index([firstName, lastName])
+  @@map("candidates")
+}
+
+model CandidateSkill {
+  candidateId String    @db.Uuid
+  skillId     String    @db.Uuid
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  skill       Skill     @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([candidateId, skillId])
+  @@map("candidate_skills")
+}
+
+model CandidateFunctionalExpertise {
+  candidateId           String              @db.Uuid
+  functionalExpertiseId String              @db.Uuid
+  candidate             Candidate           @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  functionalExpertise   FunctionalExpertise @relation(fields: [functionalExpertiseId], references: [id], onDelete: Cascade)
+
+  @@id([candidateId, functionalExpertiseId])
+  @@map("candidate_functional_expertise")
+}
+
+model CandidateSubFunctionalExpertise {
+  candidateId              String                 @db.Uuid
+  subFunctionalExpertiseId String                 @db.Uuid
+  candidate                Candidate              @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  subFunctionalExpertise   SubFunctionalExpertise @relation(fields: [subFunctionalExpertiseId], references: [id], onDelete: Cascade)
+
+  @@id([candidateId, subFunctionalExpertiseId])
+  @@map("candidate_sub_functional_expertise")
+}
+
+model CandidateKeyword {
+  candidateId String    @db.Uuid
+  keywordId   String    @db.Uuid
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  keyword     Keyword   @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@id([candidateId, keywordId])
+  @@map("candidate_keywords")
+}
+
+model CandidateIndustry {
+  candidateId String    @db.Uuid
+  industryId  String    @db.Uuid
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  industry    Industry  @relation(fields: [industryId], references: [id], onDelete: Cascade)
+
+  @@id([candidateId, industryId])
+  @@map("candidate_industries")
+}
+
+model CandidateSubIndustry {
+  candidateId   String      @db.Uuid
+  subIndustryId String      @db.Uuid
+  candidate     Candidate   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  subIndustry   SubIndustry @relation(fields: [subIndustryId], references: [id], onDelete: Cascade)
+
+  @@id([candidateId, subIndustryId])
+  @@map("candidate_sub_industries")
+}
