@@ -12,7 +12,7 @@ export function TopBar({
   searchPlaceholder = 'Quick search all records...',
 }: TopBarProps) {
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-background/80 px-8 backdrop-blur-md">
+    <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-background/80 px-8 backdrop-blur-md">
       <QuickSearch placeholder={searchPlaceholder} />
       <div className="flex shrink-0 items-center gap-1">
         <ThemeToggle />

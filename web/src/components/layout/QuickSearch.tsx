@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import {
   Briefcase,
@@ -22,6 +23,13 @@ import { Button } from '@/components/ui/button'
 
 const DEBOUNCE_MS = 300
 const MIN_QUERY_LENGTH = 2
+const PANEL_OFFSET_PX = 8
+
+type PanelPosition = {
+  top: number
+  left: number
+  width: number
+}
 
 const TABS: {
   id: QuickSearchTab
@@ -43,12 +51,14 @@ export function QuickSearch({
 }: QuickSearchProps) {
   const navigate = useNavigate()
   const containerRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const lastAutoTabQuery = useRef('')
 
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<QuickSearchTab>('candidates')
+  const [panelPosition, setPanelPosition] = useState<PanelPosition | null>(null)
 
   const debouncedQuery = useDebouncedValue(query, DEBOUNCE_MS)
   const trimmedDebounced = debouncedQuery.trim()
@@ -68,22 +78,49 @@ export function QuickSearch({
     if (firstWithResults) setActiveTab(firstWithResults.id)
   }, [data])
 
+  const results = data?.results[activeTab] ?? []
+  const showPanel = open && canSearch
+  const isSearching = canSearch && (isLoading || isFetching)
+
+  useLayoutEffect(() => {
+    if (!showPanel || !containerRef.current) {
+      setPanelPosition(null)
+      return
+    }
+
+    const updatePosition = () => {
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setPanelPosition({
+        top: rect.bottom + PANEL_OFFSET_PX,
+        left: rect.left,
+        width: rect.width,
+      })
+    }
+
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [showPanel, query])
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node
       if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
+        containerRef.current?.contains(target) ||
+        panelRef.current?.contains(target)
       ) {
-        setOpen(false)
+        return
       }
+      setOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-
-  const results = data?.results[activeTab] ?? []
-  const showPanel = open && canSearch
-  const isSearching = canSearch && (isLoading || isFetching)
 
   const handleResultClick = (hit: QuickSearchHit) => {
     navigate(entityDetailPath(hit.entity, hit.id))
@@ -140,11 +177,17 @@ export function QuickSearch({
         )}
       </div>
 
-      {showPanel && (
+      {showPanel && panelPosition && createPortal(
         <div
+          ref={panelRef}
           id="quick-search-results"
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-lg border border-border bg-background shadow-xl animate-in fade-in slide-in-from-top-2 duration-200"
+          style={{
+            top: panelPosition.top,
+            left: panelPosition.left,
+            width: panelPosition.width,
+          }}
+          className="fixed z-[100] overflow-hidden rounded-lg border border-border bg-background shadow-xl animate-in fade-in slide-in-from-top-2 duration-200"
         >
           <div className="flex border-b border-border bg-muted/30">
             {TABS.map((tab) => {
@@ -243,7 +286,8 @@ export function QuickSearch({
               Open in advanced search
             </Button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

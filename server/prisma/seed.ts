@@ -1,4 +1,6 @@
+import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
+import { backfillSearchVectors, setupSearchVectors } from './setup-search-vectors.js'
 
 const prisma = new PrismaClient()
 
@@ -17,6 +19,8 @@ function makeAddress(overrides: Record<string, string | null | undefined> = {}) 
 
 async function main() {
   console.log('Seeding database...')
+
+  await setupSearchVectors(prisma)
 
   const industries = await Promise.all([
     prisma.industry.create({ data: { name: 'Technology' } }),
@@ -234,6 +238,8 @@ async function main() {
       },
     })
   }
+
+  await backfillSearchVectors(prisma)
 
   console.log('Seed complete.')
 }

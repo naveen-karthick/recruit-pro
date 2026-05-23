@@ -14,6 +14,7 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
+    "db:search-setup": "tsx prisma/search-setup.ts",
     "db:flush": "tsx src/scripts/flush.ts",
     "db:reset": "tsx src/scripts/flush.ts && tsx prisma/seed.ts"
   },

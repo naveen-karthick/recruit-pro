@@ -1,160 +1,185 @@
 import { prisma } from '../lib/prisma.js'
-import { withLookupMaps, mapCompany, mapJob } from './mappers.js'
+
+const LIMIT = 10
+
+type CandidateRow = {
+  id: string
+  firstName: string
+  lastName: string
+  currentJobTitle: string | null
+  primaryEmail: string | null
+  primaryPhone: string | null
+}
+
+type ContactRow = {
+  id: string
+  firstName: string
+  lastName: string
+  jobTitle: string | null
+  primaryEmail: string | null
+  primaryPhone: string | null
+  companyName: string | null
+}
+
+type CompanyRow = {
+  id: string
+  companyName: string
+  website: string | null
+  industryNames: string | null
+}
+
+type JobRow = {
+  id: string
+  jobTitle: string
+  state: string | null
+  country: string | null
+  companyName: string | null
+}
+
+type CountRow = { count: number }
 
 export async function quickSearch(q: string) {
-  const query = q.trim().toLowerCase()
-  const limit = 10
+  const query = q.trim()
+  const normalizedQuery = query.toLowerCase()
 
   if (!query) {
     return {
-      query,
+      query: normalizedQuery,
       counts: { candidates: 0, contacts: 0, companies: 0, jobs: 0 },
       results: { candidates: [], contacts: [], companies: [], jobs: [] },
     }
   }
 
-  const [candidates, contacts, companies, jobs] = await Promise.all([
-    prisma.candidate.findMany({
-      where: {
-        OR: [
-          { firstName: { contains: query, mode: 'insensitive' } },
-          { lastName: { contains: query, mode: 'insensitive' } },
-          { primaryEmail: { contains: query, mode: 'insensitive' } },
-          { currentCompany: { contains: query, mode: 'insensitive' } },
-          { currentJobTitle: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      take: limit,
-    }),
-    prisma.contact.findMany({
-      where: {
-        OR: [
-          { firstName: { contains: query, mode: 'insensitive' } },
-          { lastName: { contains: query, mode: 'insensitive' } },
-          { primaryEmail: { contains: query, mode: 'insensitive' } },
-          { jobTitle: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      include: { company: { select: { companyName: true } } },
-      take: limit,
-    }),
-    prisma.company.findMany({
-      where: {
-        OR: [
-          { companyName: { contains: query, mode: 'insensitive' } },
-          { website: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      include: {
-        addresses: true,
-        industries: true,
-        subIndustries: true,
-        brands: true,
-        owners: true,
-        parentCompany: { select: { companyName: true } },
-      },
-      take: limit,
-    }),
-    prisma.job.findMany({
-      where: {
-        OR: [
-          { jobTitle: { contains: query, mode: 'insensitive' } },
-          { country: { contains: query, mode: 'insensitive' } },
-          { state: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      include: {
-        company: { select: { companyName: true } },
-        contact: { select: { firstName: true, lastName: true } },
-        jobAddress: true,
-        functionalExpertise: true,
-        subFunctionalExpertise: true,
-        skills: true,
-        keywords: true,
-        owners: true,
-      },
-      take: limit,
-    }),
+  const [
+    candidates,
+    contacts,
+    companies,
+    jobs,
+    candidateCount,
+    contactCount,
+    companyCount,
+    jobCount,
+  ] = await Promise.all([
+    prisma.$queryRaw<CandidateRow[]>`
+      SELECT
+        id,
+        "firstName",
+        "lastName",
+        "currentJobTitle",
+        "primaryEmail",
+        "primaryPhone"
+      FROM candidates
+      WHERE search_vector @@ plainto_tsquery('simple', ${query})
+      ORDER BY ts_rank(search_vector, plainto_tsquery('simple', ${query})) DESC
+      LIMIT ${LIMIT}
+    `,
+    prisma.$queryRaw<ContactRow[]>`
+      SELECT
+        ct.id,
+        ct."firstName",
+        ct."lastName",
+        ct."jobTitle",
+        ct."primaryEmail",
+        ct."primaryPhone",
+        co."companyName"
+      FROM contacts ct
+      LEFT JOIN companies co ON co.id = ct."companyId"
+      WHERE ct.search_vector @@ plainto_tsquery('simple', ${query})
+      ORDER BY ts_rank(ct.search_vector, plainto_tsquery('simple', ${query})) DESC
+      LIMIT ${LIMIT}
+    `,
+    prisma.$queryRaw<CompanyRow[]>`
+      SELECT
+        c.id,
+        c."companyName",
+        c.website,
+        (
+          SELECT string_agg(i.name, ', ' ORDER BY i.name)
+          FROM company_industries ci
+          JOIN industries i ON i.id = ci."industryId"
+          WHERE ci."companyId" = c.id
+        ) AS "industryNames"
+      FROM companies c
+      WHERE c.search_vector @@ plainto_tsquery('simple', ${query})
+      ORDER BY ts_rank(c.search_vector, plainto_tsquery('simple', ${query})) DESC
+      LIMIT ${LIMIT}
+    `,
+    prisma.$queryRaw<JobRow[]>`
+      SELECT
+        j.id,
+        j."jobTitle",
+        j.state,
+        j.country,
+        co."companyName"
+      FROM jobs j
+      LEFT JOIN companies co ON co.id = j."companyId"
+      WHERE j.search_vector @@ plainto_tsquery('simple', ${query})
+      ORDER BY ts_rank(j.search_vector, plainto_tsquery('simple', ${query})) DESC
+      LIMIT ${LIMIT}
+    `,
+    prisma.$queryRaw<CountRow[]>`
+      SELECT COUNT(*)::int AS count
+      FROM candidates
+      WHERE search_vector @@ plainto_tsquery('simple', ${query})
+    `,
+    prisma.$queryRaw<CountRow[]>`
+      SELECT COUNT(*)::int AS count
+      FROM contacts
+      WHERE search_vector @@ plainto_tsquery('simple', ${query})
+    `,
+    prisma.$queryRaw<CountRow[]>`
+      SELECT COUNT(*)::int AS count
+      FROM companies
+      WHERE search_vector @@ plainto_tsquery('simple', ${query})
+    `,
+    prisma.$queryRaw<CountRow[]>`
+      SELECT COUNT(*)::int AS count
+      FROM jobs
+      WHERE search_vector @@ plainto_tsquery('simple', ${query})
+    `,
   ])
 
-  return withLookupMaps(async (maps) => {
-    const candidateResults = candidates.map((c) => ({
-      entity: 'candidates' as const,
-      id: c.id,
-      name: `${c.firstName} ${c.lastName}`,
-      subtitle: c.currentJobTitle ?? '',
-      email: c.primaryEmail ?? '',
-      phone: c.primaryPhone ?? '',
-    }))
-
-    const contactResults = contacts.map((c) => ({
-      entity: 'contacts' as const,
-      id: c.id,
-      name: `${c.firstName} ${c.lastName}`,
-      subtitle: `${c.jobTitle ?? ''} — ${c.company?.companyName ?? ''}`,
-      email: c.primaryEmail ?? '',
-      phone: c.primaryPhone ?? '',
-    }))
-
-    const companyResults = companies.map((c) => {
-      const enriched = mapCompany(c, maps)
-      return {
+  return {
+    query: normalizedQuery,
+    counts: {
+      candidates: candidateCount[0]?.count ?? 0,
+      contacts: contactCount[0]?.count ?? 0,
+      companies: companyCount[0]?.count ?? 0,
+      jobs: jobCount[0]?.count ?? 0,
+    },
+    results: {
+      candidates: candidates.map((c) => ({
+        entity: 'candidates' as const,
+        id: c.id,
+        name: `${c.firstName} ${c.lastName}`,
+        subtitle: c.currentJobTitle ?? '',
+        email: c.primaryEmail ?? '',
+        phone: c.primaryPhone ?? '',
+      })),
+      contacts: contacts.map((c) => ({
+        entity: 'contacts' as const,
+        id: c.id,
+        name: `${c.firstName} ${c.lastName}`,
+        subtitle: `${c.jobTitle ?? ''} — ${c.companyName ?? ''}`,
+        email: c.primaryEmail ?? '',
+        phone: c.primaryPhone ?? '',
+      })),
+      companies: companies.map((c) => ({
         entity: 'companies' as const,
         id: c.id,
         name: c.companyName,
-        subtitle: enriched.industryNames.join(', '),
+        subtitle: c.industryNames ?? '',
         email: c.website ?? '',
         phone: '',
-      }
-    })
-
-    const jobResults = jobs.map((j) => {
-      const enriched = mapJob(j, maps)
-      return {
+      })),
+      jobs: jobs.map((j) => ({
         entity: 'jobs' as const,
         id: j.id,
         name: j.jobTitle,
-        subtitle: `${enriched.companyName ?? ''} · ${j.state ?? j.country ?? ''}`,
+        subtitle: `${j.companyName ?? ''} · ${j.state ?? j.country ?? ''}`,
         email: '',
         phone: '',
-      }
-    })
-
-    const [candidateCount, contactCount, companyCount, jobCount] = await Promise.all([
-      prisma.candidate.count({
-        where: {
-          OR: [
-            { firstName: { contains: query, mode: 'insensitive' } },
-            { lastName: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-      }),
-      prisma.contact.count({
-        where: {
-          OR: [
-            { firstName: { contains: query, mode: 'insensitive' } },
-            { lastName: { contains: query, mode: 'insensitive' } },
-          ],
-        },
-      }),
-      prisma.company.count({ where: { companyName: { contains: query, mode: 'insensitive' } } }),
-      prisma.job.count({ where: { jobTitle: { contains: query, mode: 'insensitive' } } }),
-    ])
-
-    return {
-      query,
-      counts: {
-        candidates: candidateCount,
-        contacts: contactCount,
-        companies: companyCount,
-        jobs: jobCount,
-      },
-      results: {
-        candidates: candidateResults,
-        contacts: contactResults,
-        companies: companyResults,
-        jobs: jobResults,
-      },
-    }
-  })
+      })),
+    },
+  }
 }
