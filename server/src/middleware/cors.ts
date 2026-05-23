@@ -1,27 +1,19 @@
-import type { CorsOptions } from 'cors'
+import type { Request, Response, NextFunction } from 'express'
 
-const SHARED: Pick<CorsOptions, 'methods' | 'allowedHeaders' | 'optionsSuccessStatus'> = {
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 204,
-}
+const ALLOWED_METHODS = 'GET, POST, PATCH, DELETE, OPTIONS'
+const ALLOWED_HEADERS = 'Content-Type, Authorization'
 
-export function getCorsOptions(): CorsOptions {
-  const raw = process.env.CORS_ORIGIN?.trim().replace(/^["']|["']$/g, '')
+/** MVP: allow all origins. Always set headers on every response. */
+export function corsMiddleware(req: Request, res: Response, next: NextFunction) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS)
+  res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS)
+  res.setHeader('Access-Control-Max-Age', '86400')
 
-  // MVP: allow all origins when unset or explicitly *
-  if (!raw || raw === '*') {
-    return { origin: '*', ...SHARED }
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return
   }
 
-  const allowed = raw.split(',').map((o) => o.trim().replace(/^["']|["']$/g, '')).filter(Boolean)
-
-  if (allowed.includes('*')) {
-    return { origin: '*', ...SHARED }
-  }
-
-  return {
-    origin: allowed,
-    ...SHARED,
-  }
+  next()
 }
