@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
+const API_BASE = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '')
 
 export class ApiError extends Error {
   status: number
@@ -24,13 +24,19 @@ async function parseResponse<T>(res: Response): Promise<T> {
 }
 
 function buildUrl(path: string, params?: Record<string, string | number | undefined>) {
-  const url = new URL(`${API_BASE}${path}`, window.location.origin)
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  const url = API_BASE.startsWith('http')
+    ? new URL(`${API_BASE}${normalizedPath}`)
+    : new URL(`${API_BASE}${normalizedPath}`, window.location.origin)
+
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== '') url.searchParams.set(key, String(value))
     })
   }
-  return url.pathname + url.search
+
+  // Must return full href for cross-origin API URLs (Vercel UI → separate API project).
+  return url.href
 }
 
 export async function apiGet<T>(
