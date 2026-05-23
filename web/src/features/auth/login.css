@@ -1,0 +1,102 @@
+@keyframes login-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-hero-reveal {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes login-ken-burns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+.login-form-panel {
+  animation: login-slide-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.login-header {
+  animation: login-slide-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+}
+
+.login-actions {
+  animation: login-slide-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+
+.login-footer {
+  animation: login-slide-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+}
+
+.login-form-fields {
+  animation: login-slide-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.login-hero-panel {
+  animation: login-hero-reveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+.login-hero-parallax {
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.login-hero-ken-burns {
+  animation: login-ken-burns 32s ease-in-out infinite alternate;
+}
+
+.login-btn-google {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.25s ease,
+    background-color 0.2s ease;
+}
+
+.login-btn-google:hover {
+  background-color: #171717;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+.login-btn-google:active {
+  transform: translateY(0);
+}
+
+.login-btn-primary {
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.25s ease;
+}
+
+.login-btn-primary:hover {
+  background-color: #e5e5e5;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.login-btn-primary:active {
+  transform: translateY(0);
+  background-color: #d4d4d4;
+}
+
+.login-field-input:focus {
+  transform: translateY(-1px);
+}

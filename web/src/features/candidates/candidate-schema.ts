@@ -1,0 +1,53 @@
+import { z } from 'zod'
+
+export const candidateSchema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  gender: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  primaryEmail: z.string().email().optional().or(z.literal('')),
+  primaryPhone: z.string().optional(),
+  linkedinProfile: z.string().optional(),
+  currentAddress: z.string().optional(),
+  nationality: z.string().optional(),
+  workSummary: z.string().max(2000).optional(),
+  currentCompany: z.string().optional(),
+  currentJobTitle: z.string().optional(),
+  totalExperience: z.number().optional(),
+  expectedSalary: z.number().optional(),
+  availabilityDate: z.string().optional(),
+  skillIds: z.array(z.string()),
+  functionalExpertiseIds: z.array(z.string()),
+  subFunctionalExpertiseIds: z.array(z.string()),
+  keywordIds: z.array(z.string()),
+  industryIds: z.array(z.string()),
+  subIndustryIds: z.array(z.string()),
+  ownerId: z.string().optional(),
+})
+
+export type CandidateFormValues = z.infer<typeof candidateSchema>
+
+export const candidateDefaults: CandidateFormValues = {
+  firstName: '',
+  lastName: '',
+  gender: '',
+  dateOfBirth: '',
+  primaryEmail: '',
+  primaryPhone: '',
+  linkedinProfile: '',
+  currentAddress: '',
+  nationality: '',
+  workSummary: '',
+  currentCompany: '',
+  currentJobTitle: '',
+  totalExperience: undefined,
+  expectedSalary: undefined,
+  availabilityDate: '',
+  skillIds: [],
+  functionalExpertiseIds: [],
+  subFunctionalExpertiseIds: [],
+  keywordIds: [],
+  industryIds: [],
+  subIndustryIds: [],
+  ownerId: '',
+}

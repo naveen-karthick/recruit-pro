@@ -1,0 +1,95 @@
+@keyframes dialog-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-content-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes dialog-content-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+}
+
+@keyframes modal-field-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modal-shimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+.dialog-overlay[data-state='open'] {
+  animation: dialog-overlay-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.dialog-overlay[data-state='closed'] {
+  animation: dialog-overlay-out 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.dialog-content[data-state='open'] {
+  animation: dialog-content-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.dialog-content[data-state='closed'] {
+  animation: dialog-content-out 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.modal-field-enter {
+  animation: modal-field-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.modal-step-enter {
+  animation: modal-field-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.modal-accent-bar {
+  background: linear-gradient(
+    90deg,
+    #0ea5e9 0%,
+    #38bdf8 35%,
+    #818cf8 70%,
+    #0ea5e9 100%
+  );
+  background-size: 200% auto;
+  animation: modal-shimmer 6s linear infinite;
+}
