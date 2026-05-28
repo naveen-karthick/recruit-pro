@@ -44,7 +44,8 @@ export function ThemeProvider({
       <NextThemesProvider
         attribute="class"
         defaultTheme={themeConfig.defaultMode}
-        enableSystem
+        forcedTheme="light"
+        enableSystem={false}
         storageKey={themeConfig.storageKey}
         disableTransitionOnChange
       >

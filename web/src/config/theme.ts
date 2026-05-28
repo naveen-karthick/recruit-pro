@@ -7,8 +7,8 @@ import type { ThemePreset } from '@/themes/registry'
 export const themeConfig = {
   /** Theme preset id (must match a key in themes/registry.ts) */
   preset: 'vercel' satisfies ThemePreset,
-  /** Default color mode before user preference is stored */
-  defaultMode: 'system' as 'light' | 'dark' | 'system',
+  /** Default color mode (light only for now; system/dark switching disabled) */
+  defaultMode: 'light' as 'light' | 'dark' | 'system',
   /** localStorage key for color mode preference */
   storageKey: 'recruitpro-theme',
 } as const

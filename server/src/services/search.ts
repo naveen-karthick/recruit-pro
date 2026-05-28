@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js'
+import { buildPrefixTsQuery } from '../utils/search-query.js'
 
 const LIMIT = 10
 
@@ -41,8 +42,9 @@ type CountRow = { count: number }
 export async function quickSearch(q: string) {
   const query = q.trim()
   const normalizedQuery = query.toLowerCase()
+  const tsQuery = buildPrefixTsQuery(query)
 
-  if (!query) {
+  if (!query || !tsQuery) {
     return {
       query: normalizedQuery,
       counts: { candidates: 0, contacts: 0, companies: 0, jobs: 0 },
@@ -69,8 +71,8 @@ export async function quickSearch(q: string) {
         "primaryEmail",
         "primaryPhone"
       FROM candidates
-      WHERE search_vector @@ plainto_tsquery('simple', ${query})
-      ORDER BY ts_rank(search_vector, plainto_tsquery('simple', ${query})) DESC
+      WHERE search_vector @@ to_tsquery('simple', ${tsQuery})
+      ORDER BY ts_rank(search_vector, to_tsquery('simple', ${tsQuery})) DESC
       LIMIT ${LIMIT}
     `,
     prisma.$queryRaw<ContactRow[]>`
@@ -84,8 +86,8 @@ export async function quickSearch(q: string) {
         co."companyName"
       FROM contacts ct
       LEFT JOIN companies co ON co.id = ct."companyId"
-      WHERE ct.search_vector @@ plainto_tsquery('simple', ${query})
-      ORDER BY ts_rank(ct.search_vector, plainto_tsquery('simple', ${query})) DESC
+      WHERE ct.search_vector @@ to_tsquery('simple', ${tsQuery})
+      ORDER BY ts_rank(ct.search_vector, to_tsquery('simple', ${tsQuery})) DESC
       LIMIT ${LIMIT}
     `,
     prisma.$queryRaw<CompanyRow[]>`
@@ -100,8 +102,8 @@ export async function quickSearch(q: string) {
           WHERE ci."companyId" = c.id
         ) AS "industryNames"
       FROM companies c
-      WHERE c.search_vector @@ plainto_tsquery('simple', ${query})
-      ORDER BY ts_rank(c.search_vector, plainto_tsquery('simple', ${query})) DESC
+      WHERE c.search_vector @@ to_tsquery('simple', ${tsQuery})
+      ORDER BY ts_rank(c.search_vector, to_tsquery('simple', ${tsQuery})) DESC
       LIMIT ${LIMIT}
     `,
     prisma.$queryRaw<JobRow[]>`
@@ -113,29 +115,29 @@ export async function quickSearch(q: string) {
         co."companyName"
       FROM jobs j
       LEFT JOIN companies co ON co.id = j."companyId"
-      WHERE j.search_vector @@ plainto_tsquery('simple', ${query})
-      ORDER BY ts_rank(j.search_vector, plainto_tsquery('simple', ${query})) DESC
+      WHERE j.search_vector @@ to_tsquery('simple', ${tsQuery})
+      ORDER BY ts_rank(j.search_vector, to_tsquery('simple', ${tsQuery})) DESC
       LIMIT ${LIMIT}
     `,
     prisma.$queryRaw<CountRow[]>`
       SELECT COUNT(*)::int AS count
       FROM candidates
-      WHERE search_vector @@ plainto_tsquery('simple', ${query})
+      WHERE search_vector @@ to_tsquery('simple', ${tsQuery})
     `,
     prisma.$queryRaw<CountRow[]>`
       SELECT COUNT(*)::int AS count
       FROM contacts
-      WHERE search_vector @@ plainto_tsquery('simple', ${query})
+      WHERE search_vector @@ to_tsquery('simple', ${tsQuery})
     `,
     prisma.$queryRaw<CountRow[]>`
       SELECT COUNT(*)::int AS count
       FROM companies
-      WHERE search_vector @@ plainto_tsquery('simple', ${query})
+      WHERE search_vector @@ to_tsquery('simple', ${tsQuery})
     `,
     prisma.$queryRaw<CountRow[]>`
       SELECT COUNT(*)::int AS count
       FROM jobs
-      WHERE search_vector @@ plainto_tsquery('simple', ${query})
+      WHERE search_vector @@ to_tsquery('simple', ${tsQuery})
     `,
   ])
 
